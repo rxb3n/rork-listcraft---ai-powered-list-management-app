@@ -34,6 +34,22 @@ export default function CreateScreen() {
   const [budget, setBudget] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [currency, setCurrency] = useState<string>("USD");
+  const currencySymbol = useMemo<string>(() => {
+    switch (currency) {
+      case "USD":
+        return "$";
+      case "EUR":
+        return "€";
+      case "GBP":
+        return "£";
+      case "JPY":
+        return "¥";
+      case "INR":
+        return "₹";
+      default:
+        return "$";
+    }
+  }, [currency]);
   const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
 
   const categoryColors: Record<Category, string> = useMemo(() => ({
@@ -108,7 +124,7 @@ export default function CreateScreen() {
         items: generated.items,
       };
       await addListMutation.mutateAsync(payload);
-      spendCredits(1);
+      await spendCredits(1);
       setDescription("");
       success = true;
       console.log("List generated successfully");
@@ -304,7 +320,7 @@ export default function CreateScreen() {
                     <TextInput
                       testID="budget-input"
                       style={styles.input}
-                      placeholder="$50"
+                      placeholder={`${currencySymbol}50`}
                       value={budget}
                       onChangeText={setBudget}
                     />
