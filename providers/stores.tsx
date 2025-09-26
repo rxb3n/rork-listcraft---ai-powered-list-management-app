@@ -68,7 +68,7 @@ export type CreditsState = {
 export const [CreditsProvider, useCreditsStore] = createContextHook<CreditsState>(() => {
   const { getItem, setItem } = useStorage();
   const now = new Date();
-  const [credits, setCreditsState] = useState<number>(10);
+  const [credits, setCreditsState] = useState<number>(0);
   const [pro, setPro] = useState<boolean>(false);
   const [periodKey, setPeriodKey] = useState<string>(monthKey(now));
   const [usedThisPeriod, setUsed] = useState<number>(0);
@@ -87,22 +87,25 @@ export const [CreditsProvider, useCreditsStore] = createContextHook<CreditsState
 
   const canSpend = useCallback((amount: number) => {
     if (amount <= 0) return true;
-    if (pro) return credits >= amount;
+    if (pro) return true;
+    if (credits >= amount) return true;
     const withinMonthly = usedThisPeriod + amount <= monthlyFreeLimit;
-    return withinMonthly && credits >= amount;
+    return withinMonthly;
   }, [credits, monthlyFreeLimit, pro, usedThisPeriod]);
 
   const spend = useCallback(async (amount: number) => {
     await resetPeriodIfNeeded();
     if (!canSpend(amount)) return;
-    const nextCredits = Math.max(0, credits - amount);
-    await setItem("lc/credits", String(nextCredits));
-    setCreditsState(nextCredits);
-    if (!pro) {
-      const nextUsed = usedThisPeriod + amount;
-      await setItem("lc/used", String(nextUsed));
-      setUsed(nextUsed);
+    if (pro) return;
+    if (credits >= amount) {
+      const nextCredits = Math.max(0, credits - amount);
+      await setItem("lc/credits", String(nextCredits));
+      setCreditsState(nextCredits);
+      return;
     }
+    const nextUsed = usedThisPeriod + amount;
+    await setItem("lc/used", String(nextUsed));
+    setUsed(nextUsed);
   }, [canSpend, credits, pro, resetPeriodIfNeeded, setItem, usedThisPeriod]);
 
   const earn = useCallback(async (amount: number) => {

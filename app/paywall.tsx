@@ -1,11 +1,28 @@
 import { router } from "expo-router";
 import React, { useCallback, useMemo } from "react";
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCreditsStore } from "@/providers/stores";
-import { Check, Crown, X } from "lucide-react-native";
+import { Check, Crown, X, Gift, Package } from "lucide-react-native";
+
+
+type CreditPack = {
+  id: string;
+  credits: number;
+  priceEUR: string;
+  subtitle: string;
+  highlight?: boolean;
+};
+
+const packs: CreditPack[] = [
+  { id: "pack10", credits: 10, priceEUR: "€2.99", subtitle: "Starter • ~€0.30/credit" },
+  { id: "pack25", credits: 25, priceEUR: "€5.99", subtitle: "Great value • ~€0.24/credit", highlight: true },
+  { id: "pack50", credits: 50, priceEUR: "€9.99", subtitle: "Power • ~€0.20/credit" },
+];
 
 export default function PaywallScreen() {
-  const { subscribe, pro } = useCreditsStore();
+  const insets = useSafeAreaInsets();
+  const { subscribe, pro, earn } = useCreditsStore();
 
   const price = useMemo(() => "$4.99/mo", []);
 
@@ -14,8 +31,18 @@ export default function PaywallScreen() {
     router.back();
   }, [subscribe]);
 
+  const onBuyPack = useCallback(async (pack: CreditPack) => {
+    try {
+      console.log("[IAP] Simulated purchase", pack);
+      await earn(pack.credits);
+      router.back();
+    } catch (e) {
+      console.log("Purchase failed", e);
+    }
+  }, [earn]);
+
   return (
-    <View style={styles.container} testID="paywall-screen">
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]} testID="paywall-screen">
       <View style={styles.card}>
         <View style={styles.header}>
           <Crown color="#fff" />
@@ -46,6 +73,30 @@ export default function PaywallScreen() {
           <Text style={styles.buttonText}>{pro ? "Active" : "Start Pro"}</Text>
         </TouchableOpacity>
 
+        <View style={styles.divider} />
+
+        <Text style={styles.sectionTitle}>Or buy credits</Text>
+        <View style={styles.packsRow}>
+          {packs.map((p) => (
+            <View
+              key={p.id}
+              style={[styles.packCard, p.highlight ? styles.packHighlight : undefined]}
+              testID={`pack-${p.id}`}
+            >
+              <View style={styles.packIcon}>{p.highlight ? <Gift color="#8B5CF6" /> : <Package color="#64748b" />}</View>
+              <Text style={styles.packTitle}>{p.credits} credits</Text>
+              <Text style={styles.packSubtitle}>{p.subtitle}</Text>
+              <TouchableOpacity
+                style={[styles.button, styles.packButton]}
+                onPress={() => onBuyPack(p)}
+                testID={`buy-${p.id}`}
+              >
+                <Text style={styles.packButtonText}>{p.priceEUR}</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+
         <TouchableOpacity style={[styles.button, styles.secondary]} onPress={() => router.back()} testID="close-paywall">
           <X color="#0F172A" />
           <Text style={[styles.buttonText, styles.secondaryText]}>Not now</Text>
@@ -71,4 +122,14 @@ const styles = StyleSheet.create({
   secondary: { backgroundColor: "#E2E8F0" },
   buttonText: { color: "white", fontWeight: fontWeightBold },
   secondaryText: { color: "#0F172A" },
+  divider: { height: 1, backgroundColor: "#E2E8F0", marginVertical: 4 },
+  sectionTitle: { color: "#334155", fontWeight: fontWeightBold },
+  packsRow: { flexDirection: "row", gap: 12, flexWrap: "wrap" },
+  packCard: { flexBasis: "48%", backgroundColor: "#F8FAFC", borderRadius: 12, padding: 12, gap: 6 },
+  packHighlight: { borderWidth: 2, borderColor: "#8B5CF6", backgroundColor: "#F5F3FF" },
+  packIcon: { width: 24, height: 24 },
+  packTitle: { color: "#0F172A", fontWeight: fontWeightBold },
+  packSubtitle: { color: "#64748b", fontSize: 12 },
+  packButton: { backgroundColor: "#0F172A" },
+  packButtonText: { color: "white", fontWeight: fontWeightBold },
 });
